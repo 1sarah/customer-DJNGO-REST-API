@@ -1,17 +1,18 @@
 from rest_framework import serializers
 from ordercust.models import Customer, Order, User
+from django.contrib.auth import authenticate
 
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Customer
-        fields = ['name', 'code']
+        fields = ['name', 'code','number']
 
 
 class OrderSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Order
-        fields = ['item', 'amount', 'time']     
+        fields = ['item', 'amount']     
 
 
 class SocialAuthSerializer(serializers.Serializer):
@@ -59,3 +60,31 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('email', 'username', 'token')
 
+class UserLoginSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('email', 'username', 'token','email','password')
+
+    email = serializers.CharField(max_length=255)
+    password = serializers.CharField(max_length=128, write_only=True)
+    token = serializers.CharField(max_length=255, read_only=True)
+
+    # def validate(self, data):
+        
+    #     if user is None:
+    #         raise serializers.ValidationError(
+    #             'A user with this email and password is not found.'
+    #         )
+    #     try:
+    #         payload = JWT_PAYLOAD_HANDLER(user)
+    #         jwt_token = JWT_ENCODE_HANDLER(payload)
+    #         update_last_login(None, user)
+    #     except User.DoesNotExist:
+    #         raise serializers.ValidationError(
+    #             'User with given email and password does not exists'
+    #         )
+    #     return {
+    #         'email':user.email,
+    #         'token': jwt_token
+    #     }

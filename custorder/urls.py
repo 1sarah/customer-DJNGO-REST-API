@@ -18,12 +18,13 @@ from django.urls import include, path
 from rest_framework import routers
 from ordercust import views
 import ordercust
-from rest_framework_simplejwt import views as jwt_views
+
 
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
+    path('signin', views.UserLoginView),
     path('admin/', admin.site.urls),
     path('orders/',views.order_list),
     path('customer/', views.customer_list),
@@ -32,6 +33,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('oidc/', include('mozilla_django_oidc.urls')),
     path('social/auth/', views.social_login),
-    path('api/token/', jwt_views.TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
+   
 ]

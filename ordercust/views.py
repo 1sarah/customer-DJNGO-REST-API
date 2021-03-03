@@ -2,7 +2,9 @@ from django.shortcuts import render
 
 # Create your views here.
 from ordercust.models import Customer, Order, User
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 from rest_framework import viewsets
 from rest_framework import permissions, status
 from .serializers import CustomerSerializer, OrderSerializer, SocialAuthSerializer, UserSerializer
@@ -10,9 +12,18 @@ from django.http import JsonResponse
 from rest_framework.parsers import JSONParser
 from unicodedata import name
 
+
 from social_django.utils import load_backend, load_strategy
 from social_core.backends.oauth import BaseOAuth1, BaseOAuth2
 from social_core.exceptions import MissingBackend
+from ordercust.serializers import UserLoginSerializer
+from rest_framework.permissions import AllowAny
+from requests.models import Response
+from django.contrib.auth.models import update_last_login
+from rest_framework_jwt.settings import api_settings
+
+JWT_PAYLOAD_HANDLER = api_settings.JWT_PAYLOAD_HANDLER
+JWT_ENCODE_HANDLER = api_settings.JWT_ENCODE_HANDLER
 
 
 # class CustomerViewSet(viewsets.ModelViewSet):
@@ -34,6 +45,8 @@ from social_core.exceptions import MissingBackend
 
 
 @api_view(['GET', 'POST', 'DELETE'])
+@permission_classes((IsAuthenticated, ))
+@authentication_classes((JSONWebTokenAuthentication,))
 def customer_list(request):
     if request.method == 'GET':
         customers = Customer.objects.all()
@@ -94,7 +107,7 @@ def customer_list_name(request):
         return JsonResponse(customers_serializer.data, safe=False)
 
 
-@api_view(['GET', 'POST', 'DELETE'])
+@api_view(['GET', 'POST'])
 def order_list(request):
     if request.method == 'GET':
         orders = Order.objects.all()
@@ -112,12 +125,14 @@ def order_list(request):
         order_serializer = OrderSerializer(data=order_data)
         if order_serializer.is_valid():
             order_serializer.save()
-            return JsonResponse(order_serializer.data, status=status.HTTP_201_CREATED) 
-        return JsonResponse(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    elif request.method == 'DELETE':
-        count = Order.objects.all().delete()
-        return JsonResponse({'message': '{} orders were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)
+
+    return JsonResponse(order_serializer.data, status=status.HTTP_201_CREATED) 
+    return JsonResponse(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # elif request.method == 'DELETE':
+    #     count = Order.objects.all().delete()
+    #     return JsonResponse({'message': '{} orders were deleted successfully!'.format(count[0])}, status=status.HTTP_204_NO_CONTENT)
  
       
 
@@ -150,12 +165,36 @@ def social_login(request):
     if user:
         user.is_verified = True
         # user.token = functionto generate token
+        
+        payload = JWT_PAYLOAD_HANDLER(user)
+        jwt_token = JWT_ENCODE_HANDLER(payload)
+        user.token = jwt_token
+        print("+"*10)
+        print(jwt_token)
         user.save()
+        update_last_login(None, user)
         serializer = UserSerializer(user)
         serializer.instance = user
         
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET','POST'])
+def UserLoginView( request):
+    permission_classes = (AllowAny,)
+    serializer_class = UserLoginSerializer
+    serializer = serializer_class(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    response = {
+        'success' : 'True',
+        'status code' : status.HTTP_200_OK,
+        'message': 'User logged in  successfully',
+        'token' : serializer.data['token'],
+        }
+    status_code = status.HTTP_200_OK
+
+    return Response(response, status=status_code)
 
 
 
